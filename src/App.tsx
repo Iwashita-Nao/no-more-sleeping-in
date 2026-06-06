@@ -33,7 +33,7 @@ export default function App() {
 
   const { reset: resetSensor } = useMotionSensor({
     onExceeded: handleMotionExceeded,
-    config: { threshold, windowMs: 200 },
+    config: { threshold },
     enabled: appState === 'monitoring',
   })
 

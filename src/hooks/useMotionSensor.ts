@@ -2,7 +2,6 @@ import { useEffect, useRef, useCallback } from 'react'
 
 export interface MotionConfig {
   threshold: number // m/s² combined acceleration magnitude delta
-  windowMs: number  // averaging window in ms
 }
 
 export interface UseMotionSensorOptions {
@@ -40,7 +39,7 @@ export async function requestMotionPermission(): Promise<boolean> {
     try {
       const result = await (DeviceMotionEvent as unknown as { requestPermission: () => Promise<string> }).requestPermission()
       return result === 'granted'
-    } catch {
+    } catch (_err) {
       return false
     }
   }
