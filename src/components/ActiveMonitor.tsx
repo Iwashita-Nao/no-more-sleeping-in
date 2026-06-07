@@ -1,42 +1,58 @@
 import { useEffect, useState, useRef } from 'react'
 
 interface ActiveMonitorProps {
-  durationMinutes: number
+  durationSeconds: number
   alarmCount: number
   onCancel: () => void
 }
 
-function formatCountdown(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
+function formatCountdown(totalSec: number): string {
+  const h = Math.floor(totalSec / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  const s = totalSec % 60
+  if (h > 0) {
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  }
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-function getProgressColor(pct: number): string {
-  if (pct > 0.66) return '#f59e0b' // amber
-  if (pct > 0.33) return '#fb923c' // orange
-  return '#ef4444' // red
+function formatElapsed(totalSec: number): string {
+  const h = Math.floor(totalSec / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  const s = totalSec % 60
+  if (h > 0) return `${h}時間${m}分`
+  if (m > 0) return `${m}分${s > 0 ? `${s}秒` : ''}`
+  return `${s}秒`
 }
 
-export function ActiveMonitor({ durationMinutes, alarmCount, onCancel }: ActiveMonitorProps) {
-  const totalSeconds = durationMinutes * 60
-  const [remaining, setRemaining] = useState(totalSeconds)
+function getProgressColor(pct: number): string {
+  if (pct > 0.66) return '#f59e0b'
+  if (pct > 0.33) return '#fb923c'
+  return '#ef4444'
+}
+
+export function ActiveMonitor({ durationSeconds, alarmCount, onCancel }: ActiveMonitorProps) {
+  const [remaining, setRemaining] = useState(durationSeconds)
   const startTimeRef = useRef(Date.now())
 
   useEffect(() => {
     const id = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000)
-      setRemaining(Math.max(0, totalSeconds - elapsed))
+      setRemaining(Math.max(0, durationSeconds - elapsed))
     }, 500)
     return () => clearInterval(id)
-  }, [totalSeconds])
+  }, [durationSeconds])
 
-  const pct = remaining / totalSeconds
+  const pct = remaining / durationSeconds
   const radius = 100
   const circumference = 2 * Math.PI * radius
   const offset = circumference * (1 - pct)
   const color = getProgressColor(pct)
-  const elapsedMin = Math.round((totalSeconds - remaining) / 60)
+  const elapsed = durationSeconds - remaining
+
+  // 時計表示フォントサイズ（hh:mm:ss の場合は小さく）
+  const hasHours = durationSeconds >= 3600
+  const countdownFontSize = hasHours ? 'text-3xl' : 'text-5xl'
 
   return (
     <div className="flex flex-col h-full animate-fade-in">
@@ -74,7 +90,7 @@ export function ActiveMonitor({ durationMinutes, alarmCount, onCancel }: ActiveM
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-5xl font-black text-white tabular-nums" style={{ color }}>
+            <span className={`font-black text-white tabular-nums ${countdownFontSize}`} style={{ color }}>
               {formatCountdown(remaining)}
             </span>
             <span className="text-zinc-400 text-sm mt-1">残り時間</span>
@@ -88,8 +104,8 @@ export function ActiveMonitor({ durationMinutes, alarmCount, onCancel }: ActiveM
             <div className="text-xs text-zinc-400 mt-1">アラーム回数</div>
           </div>
           <div className="glass-card rounded-2xl p-4 text-center">
-            <div className="text-3xl font-black text-emerald-400">
-              {elapsedMin}分
+            <div className="text-xl font-black text-emerald-400 leading-tight">
+              {formatElapsed(elapsed)}
             </div>
             <div className="text-xs text-zinc-400 mt-1">経過時間</div>
           </div>

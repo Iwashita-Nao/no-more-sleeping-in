@@ -1,17 +1,19 @@
 interface SuccessScreenProps {
-  durationMinutes: number
+  durationSeconds: number
   alarmCount: number
   onReset: () => void
 }
 
-function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes}分`
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return m === 0 ? `${h}時間` : `${h}時間${m}分`
+function formatDuration(totalSec: number): string {
+  const h = Math.floor(totalSec / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  const s = totalSec % 60
+  if (h > 0) return `${h}時間${m > 0 ? `${m}分` : ''}`
+  if (m > 0) return `${m}分${s > 0 ? `${s}秒` : ''}`
+  return `${s}秒`
 }
 
-export function SuccessScreen({ durationMinutes, alarmCount, onReset }: SuccessScreenProps) {
+export function SuccessScreen({ durationSeconds, alarmCount, onReset }: SuccessScreenProps) {
   return (
     <div className="flex flex-col h-full items-center justify-between animate-fade-in"
       style={{ background: 'linear-gradient(160deg, #09090b 0%, #052e16 60%, #09090b 100%)' }}
@@ -39,7 +41,7 @@ export function SuccessScreen({ durationMinutes, alarmCount, onReset }: SuccessS
         <div className="w-full glass-card rounded-2xl p-5 space-y-4 animate-slide-up" style={{ animationDelay: '0.1s' }}>
           <div className="flex items-center justify-between">
             <span className="text-zinc-400 text-sm">セッション時間</span>
-            <span className="text-white font-bold">{formatDuration(durationMinutes)}</span>
+            <span className="text-white font-bold">{formatDuration(durationSeconds)}</span>
           </div>
           <div className="h-px bg-zinc-800" />
           <div className="flex items-center justify-between">
@@ -73,7 +75,7 @@ export function SuccessScreen({ durationMinutes, alarmCount, onReset }: SuccessS
         <button
           id="reset-btn"
           onClick={onReset}
-          className="w-full py-5 rounded-2xl bg-green-500 hover:bg-green-400 text-white font-black text-lg tracking-tight shadow-xl glow-green active:scale-95 transition-all duration-200"
+          className="w-full py-5 rounded-2xl bg-green-500 hover:bg-green-400 text-white font-black text-lg tracking-tight shadow-xl active:scale-95 transition-all duration-200"
         >
           🔁 新しいセッションを開始
         </button>

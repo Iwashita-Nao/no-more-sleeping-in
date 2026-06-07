@@ -11,7 +11,7 @@ type AppState = 'setup' | 'monitoring' | 'alarm' | 'success'
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>('setup')
-  const [durationMinutes, setDurationMinutes] = useState(20)
+  const [durationSeconds, setDurationSeconds] = useState(20 * 60)
   const [threshold, setThreshold] = useState(3.0)
   const [alarmCount, setAlarmCount] = useState(0)
   const [isAlarmActive, setIsAlarmActive] = useState(false)
@@ -21,9 +21,9 @@ export default function App() {
   const { startAlarm, stopAlarm, playSuccess, playStart } = useAlarmAudio()
   const { requestWakeLock, releaseWakeLock } = useWakeLock()
 
-  // Fires when motion threshold exceeded
+  // 動き検知時に発火
   const handleMotionExceeded = useCallback(() => {
-    if (isAlarmActive) return // already alarming
+    if (isAlarmActive) return
     alarmCountRef.current += 1
     setAlarmCount(alarmCountRef.current)
     setIsAlarmActive(true)
@@ -37,15 +37,14 @@ export default function App() {
     enabled: appState === 'monitoring',
   })
 
-  const handleStart = async (minutes: number, thresh: number) => {
-    // Must happen inside a user gesture for iOS permission + AudioContext
+  const handleStart = async (seconds: number, thresh: number) => {
     const granted = await requestMotionPermission()
     if (!granted) {
       alert('モーションセンサーへのアクセス権限が必要です。許可してから再度お試しください。')
       return
     }
 
-    setDurationMinutes(minutes)
+    setDurationSeconds(seconds)
     setThreshold(thresh)
     setAlarmCount(0)
     alarmCountRef.current = 0
@@ -55,9 +54,7 @@ export default function App() {
     await requestWakeLock()
     setAppState('monitoring')
 
-    // Set the countdown timer
     timerRef.current = setTimeout(() => {
-      // Timer expired — success if we're still monitoring
       setAppState((curr) => {
         if (curr === 'monitoring') {
           releaseWakeLock()
@@ -66,13 +63,12 @@ export default function App() {
         }
         return curr
       })
-    }, minutes * 60 * 1000)
+    }, seconds * 1000)
   }
 
   const handleStopAlarm = useCallback(() => {
     stopAlarm()
     setIsAlarmActive(false)
-    // Return to monitoring if timer still running
     setAppState('monitoring')
   }, [stopAlarm])
 
@@ -99,7 +95,6 @@ export default function App() {
     setAppState('setup')
   }, [stopAlarm])
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
@@ -110,7 +105,7 @@ export default function App() {
 
   return (
     <div className="h-full w-full max-w-md mx-auto flex flex-col relative overflow-hidden bg-zinc-950">
-      {/* Ambient background gradient */}
+      {/* 環境グラデーション */}
       <div className="absolute inset-0 pointer-events-none">
         <div
           className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full opacity-10 blur-3xl"
@@ -125,14 +120,14 @@ export default function App() {
         />
       </div>
 
-      {/* Content */}
+      {/* コンテンツ */}
       <div className="relative z-10 h-full flex flex-col safe-top">
         {appState === 'setup' && (
           <TimerSetup onStart={handleStart} />
         )}
         {(appState === 'monitoring' || appState === 'alarm') && (
           <ActiveMonitor
-            durationMinutes={durationMinutes}
+            durationSeconds={durationSeconds}
             alarmCount={alarmCount}
             onCancel={handleCancel}
           />
@@ -145,7 +140,7 @@ export default function App() {
         )}
         {appState === 'success' && (
           <SuccessScreen
-            durationMinutes={durationMinutes}
+            durationSeconds={durationSeconds}
             alarmCount={alarmCount}
             onReset={handleReset}
           />

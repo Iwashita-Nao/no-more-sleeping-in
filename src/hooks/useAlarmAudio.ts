@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 
-// Synthesize a harsh buzzing alarm using the Web Audio API
+// Web Audio API による警告音合成（少し優しいバージョン）
 export function useAlarmAudio() {
   const audioCtxRef = useRef<AudioContext | null>(null)
   const nodesRef = useRef<{ osc: OscillatorNode; gain: GainNode }[]>([])
@@ -14,31 +14,38 @@ export function useAlarmAudio() {
   }, [])
 
   const playBurst = useCallback((ctx: AudioContext) => {
-    // Clean old nodes
+    // 古いノードをフェードアウト
     nodesRef.current.forEach(({ osc, gain }) => {
-      try { gain.gain.setTargetAtTime(0, ctx.currentTime, 0.02) } catch { /* ignore */ }
-      try { osc.stop(ctx.currentTime + 0.1) } catch { /* ignore */ }
+      try { gain.gain.setTargetAtTime(0, ctx.currentTime, 0.05) } catch { /* ignore */ }
+      try { osc.stop(ctx.currentTime + 0.15) } catch { /* ignore */ }
     })
     nodesRef.current = []
 
-    // Three layered oscillators for a harsh alarm sound
-    const frequencies = [880, 660, 440]
-    frequencies.forEach((freq, i) => {
+    // 優しめの三角波 2 層（サイン波に近く、耳に刺さりにくい）
+    // 周波数も低めにして穏やかに
+    const layers: { freq: number; volume: number }[] = [
+      { freq: 523.25, volume: 0.28 }, // C5（中音域）
+      { freq: 392.00, volume: 0.14 }, // G4（低め・ハーモニー）
+    ]
+
+    layers.forEach(({ freq, volume }) => {
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
       osc.connect(gain)
       gain.connect(ctx.destination)
-      osc.type = i === 0 ? 'sawtooth' : i === 1 ? 'square' : 'sawtooth'
+
+      // triangle 波 = サイン波より倍音が少なく柔らかい
+      osc.type = 'triangle'
       osc.frequency.setValueAtTime(freq, ctx.currentTime)
-      // Frequency sweep for urgency
-      osc.frequency.linearRampToValueAtTime(freq * 1.05, ctx.currentTime + 0.15)
-      osc.frequency.linearRampToValueAtTime(freq, ctx.currentTime + 0.3)
+
+      // 穏やかなエンベロープ（ゆっくり立ち上がり、ゆっくり消える）
       gain.gain.setValueAtTime(0, ctx.currentTime)
-      gain.gain.linearRampToValueAtTime(i === 0 ? 0.4 : 0.2, ctx.currentTime + 0.02)
-      gain.gain.setValueAtTime(i === 0 ? 0.4 : 0.2, ctx.currentTime + 0.25)
-      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.35)
+      gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + 0.08)  // 緩やかなアタック
+      gain.gain.setValueAtTime(volume, ctx.currentTime + 0.35)
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.55)       // 緩やかなリリース
+
       osc.start(ctx.currentTime)
-      osc.stop(ctx.currentTime + 0.4)
+      osc.stop(ctx.currentTime + 0.6)
       nodesRef.current.push({ osc, gain })
     })
   }, [])
@@ -47,9 +54,10 @@ export function useAlarmAudio() {
     const ctx = getCtx()
     if (ctx.state === 'suspended') ctx.resume()
     playBurst(ctx)
+    // インターバルを長めにして連続性を緩和（600ms → 950ms）
     intervalRef.current = setInterval(() => {
       playBurst(ctx)
-    }, 600)
+    }, 950)
   }, [getCtx, playBurst])
 
   const stopAlarm = useCallback(() => {
@@ -60,18 +68,18 @@ export function useAlarmAudio() {
     nodesRef.current.forEach(({ osc, gain }) => {
       const ctx = audioCtxRef.current
       if (ctx) {
-        try { gain.gain.setTargetAtTime(0, ctx.currentTime, 0.05) } catch { /* ignore */ }
-        try { osc.stop(ctx.currentTime + 0.1) } catch { /* ignore */ }
+        try { gain.gain.setTargetAtTime(0, ctx.currentTime, 0.08) } catch { /* ignore */ }
+        try { osc.stop(ctx.currentTime + 0.2) } catch { /* ignore */ }
       }
     })
     nodesRef.current = []
   }, [])
 
-  // Play a short gentle success chime
+  // 成功チャイム（C5 E5 G5 C6 の上昇アルペジオ）
   const playSuccess = useCallback(() => {
     const ctx = getCtx()
     if (ctx.state === 'suspended') ctx.resume()
-    const notes = [523.25, 659.25, 783.99, 1046.5] // C5 E5 G5 C6
+    const notes = [523.25, 659.25, 783.99, 1046.5]
     notes.forEach((freq, i) => {
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
@@ -87,7 +95,7 @@ export function useAlarmAudio() {
     })
   }, [getCtx])
 
-  // Play a short tick sound when monitoring starts
+  // スタート時の短い確認音
   const playStart = useCallback(() => {
     const ctx = getCtx()
     if (ctx.state === 'suspended') ctx.resume()
@@ -96,11 +104,11 @@ export function useAlarmAudio() {
     osc.connect(gain)
     gain.connect(ctx.destination)
     osc.type = 'sine'
-    osc.frequency.setValueAtTime(880, ctx.currentTime)
-    gain.gain.setValueAtTime(0.3, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15)
+    osc.frequency.setValueAtTime(660, ctx.currentTime)
+    gain.gain.setValueAtTime(0.2, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2)
     osc.start(ctx.currentTime)
-    osc.stop(ctx.currentTime + 0.2)
+    osc.stop(ctx.currentTime + 0.25)
   }, [getCtx])
 
   useEffect(() => {

@@ -9,9 +9,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icons/*.png'],
       manifest: {
-        name: 'もう寝坊しない',
-        short_name: 'もう寝坊しない',
-        description: 'スマホをベッドに置いて寝てください。寝返りを打ったら即アラームが鳴る二度寝防止アプリ。',
+        name: 'ねむる番',
+        short_name: 'ねむる番',
+        description: '睡魔との闘いをサポート。寝返りを打ったら即アラームが鳴る二度寝防止アプリ。',
         theme_color: '#f59e0b',
         background_color: '#09090b',
         display: 'standalone',
