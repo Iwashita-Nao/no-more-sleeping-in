@@ -4,24 +4,38 @@ interface TimerSetupProps {
   onStart: (durationMinutes: number, threshold: number) => Promise<void>
 }
 
-const PRESETS = [
-  { label: '5 min', value: 5, sublabel: 'Debug' },
-  { label: '15 min', value: 15, sublabel: 'Quick' },
-  { label: '20 min', value: 20, sublabel: 'Standard' },
-  { label: '30 min', value: 30, sublabel: 'Relaxed' },
-  { label: '45 min', value: 45, sublabel: 'Extended' },
-  { label: '60 min', value: 60, sublabel: 'Full Hour' },
-]
+// sensitivityLevel: 1=低感度(鈍感), 8=高感度(敏感)
+// 実際の閾値: threshold = 9 - sensitivityLevel (逆変換)
+const SENSITIVITY_MIN = 1
+const SENSITIVITY_MAX = 8
+const DEFAULT_SENSITIVITY = 6  // threshold = 3.0 相当
+
+const TIMER_MIN = 5
+const TIMER_MAX = 90
+const TIMER_STEP = 5
+
+function sensitivityToThreshold(level: number): number {
+  return SENSITIVITY_MAX + SENSITIVITY_MIN - level  // 9 - level
+}
+
+function formatTime(minutes: number): string {
+  if (minutes < 60) return `${minutes}分`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m === 0 ? `${h}時間` : `${h}時間${m}分`
+}
 
 export function TimerSetup({ onStart }: TimerSetupProps) {
-  const [selectedMinutes, setSelectedMinutes] = useState(20)
-  const [threshold, setThreshold] = useState(3.0)
+  const [durationMinutes, setDurationMinutes] = useState(20)
+  const [sensitivityLevel, setSensitivityLevel] = useState(DEFAULT_SENSITIVITY)
   const [isStarting, setIsStarting] = useState(false)
+
+  const threshold = sensitivityToThreshold(sensitivityLevel)
 
   const handleStart = async () => {
     setIsStarting(true)
     try {
-      await onStart(selectedMinutes, threshold)
+      await onStart(durationMinutes, threshold)
     } catch {
       setIsStarting(false)
     }
@@ -29,94 +43,109 @@ export function TimerSetup({ onStart }: TimerSetupProps) {
 
   return (
     <div className="flex flex-col h-full animate-fade-in">
-      {/* Header */}
+      {/* ヘッダー */}
       <div className="flex flex-col items-center pt-8 pb-6 px-6">
         <div className="relative mb-4">
           <div className="text-6xl animate-bounce-slow">😴</div>
           <div className="absolute -top-1 -right-1 text-2xl animate-ping-slow">⚡</div>
         </div>
         <h1 className="text-2xl font-black text-white tracking-tight text-center">
-          No More<br />
-          <span className="text-amber-400">Sleeping In</span>
+          もう<br />
+          <span className="text-amber-400">寝坊しない</span>
         </h1>
         <p className="text-zinc-400 text-sm text-center mt-2 leading-relaxed">
-          Place your phone on the bed.<br />Roll over → alarm fires. 🚨
+          スマホをベッドに置いて寝てください。<br />寝返りを打ったら → アラームが鳴ります 🚨
         </p>
       </div>
 
-      {/* Scrollable content */}
+      {/* スクロール可能なコンテンツ */}
       <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-5">
 
-        {/* Timer Presets */}
+        {/* タイマー時間スライダー */}
         <div className="glass-card rounded-2xl p-4">
-          <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-3">
-            ⏱ Monitoring Duration
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            {PRESETS.map((preset) => (
+          <div className="flex justify-between items-center mb-4">
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest">
+              ⏱ 監視時間
+            </p>
+            <span className="text-amber-400 font-black text-2xl tabular-nums">
+              {formatTime(durationMinutes)}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={TIMER_MIN}
+            max={TIMER_MAX}
+            step={TIMER_STEP}
+            value={durationMinutes}
+            onChange={(e) => setDurationMinutes(parseInt(e.target.value, 10))}
+            className="w-full accent-amber-400 h-2"
+            aria-label="タイマー時間"
+          />
+          <div className="flex justify-between text-xs text-zinc-500 mt-2">
+            <span>{TIMER_MIN}分</span>
+            <span>{TIMER_MAX}分</span>
+          </div>
+          {/* 目盛り表示 */}
+          <div className="flex justify-between mt-3">
+            {[5, 15, 30, 45, 60, 90].map((m) => (
               <button
-                key={preset.value}
-                onClick={() => setSelectedMinutes(preset.value)}
-                className={`
-                  relative rounded-xl py-3 px-2 text-center transition-all duration-200
-                  ${selectedMinutes === preset.value
-                    ? 'bg-amber-400 text-zinc-900 shadow-lg glow-amber scale-105'
-                    : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700 active:scale-95'
-                  }
-                `}
+                key={m}
+                onClick={() => setDurationMinutes(m)}
+                className={`text-xs px-2 py-1 rounded-lg transition-all duration-150
+                  ${durationMinutes === m
+                    ? 'bg-amber-400 text-zinc-900 font-bold'
+                    : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
               >
-                <div className="text-sm font-bold">{preset.label}</div>
-                <div className={`text-xs mt-0.5 ${selectedMinutes === preset.value ? 'text-zinc-700' : 'text-zinc-500'}`}>
-                  {preset.sublabel}
-                </div>
+                {m}分
               </button>
             ))}
           </div>
         </div>
 
-        {/* Sensitivity */}
+        {/* 感度スライダー */}
         <div className="glass-card rounded-2xl p-4">
           <div className="flex justify-between items-center mb-3">
             <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest">
-              📡 Sensitivity
+              📡 検知感度
             </p>
             <span className="text-amber-400 font-bold text-sm">
-              {threshold.toFixed(1)} m/s²
+              {sensitivityLevel <= 2 ? '低感度' : sensitivityLevel <= 5 ? '中感度' : '高感度'}
             </span>
           </div>
           <input
             type="range"
-            min="1.0"
-            max="8.0"
-            step="0.5"
-            value={threshold}
-            onChange={(e) => setThreshold(parseFloat(e.target.value))}
+            min={SENSITIVITY_MIN}
+            max={SENSITIVITY_MAX}
+            step={1}
+            value={sensitivityLevel}
+            onChange={(e) => setSensitivityLevel(parseInt(e.target.value, 10))}
             className="w-full accent-amber-400 h-2"
-            aria-label="Motion sensitivity threshold"
+            aria-label="動き検知感度"
           />
           <div className="flex justify-between text-xs text-zinc-500 mt-1">
-            <span>Very sensitive</span>
-            <span>Less sensitive</span>
+            <span>← 鈍感（動きにくい）</span>
+            <span>（反応しやすい）敏感 →</span>
           </div>
           <p className="text-xs text-zinc-500 mt-2 text-center">
-            Lower = triggers on subtle movement
+            右にするほど小さな動きで反応します
           </p>
         </div>
 
-        {/* Info cards */}
+        {/* インフォカード */}
         <div className="grid grid-cols-2 gap-3">
           <div className="glass-card rounded-xl p-3 text-center">
             <div className="text-2xl mb-1">🛏️</div>
-            <p className="text-xs text-zinc-400 leading-snug">Place flat on your bed or pillow</p>
+            <p className="text-xs text-zinc-400 leading-snug">ベッドや枕の上に<br />平らに置いてください</p>
           </div>
           <div className="glass-card rounded-xl p-3 text-center">
             <div className="text-2xl mb-1">🔊</div>
-            <p className="text-xs text-zinc-400 leading-snug">Turn volume up before starting</p>
+            <p className="text-xs text-zinc-400 leading-snug">開始前に音量を<br />上げておいてください</p>
           </div>
         </div>
       </div>
 
-      {/* Start Button */}
+      {/* スタートボタン */}
       <div className="px-5 pb-8 safe-bottom pt-4 border-t border-zinc-800/50">
         <button
           id="start-timer-btn"
@@ -132,10 +161,10 @@ export function TimerSetup({ onStart }: TimerSetupProps) {
         >
           {isStarting ? (
             <span className="flex items-center justify-center gap-2">
-              <span className="animate-spin">⏳</span> Requesting permission…
+              <span className="animate-spin">⏳</span> アクセス許可を確認中…
             </span>
           ) : (
-            '🛏️ Start Timer & Place on Bed'
+            '🛏️ タイマー開始してベッドに置く'
           )}
         </button>
       </div>

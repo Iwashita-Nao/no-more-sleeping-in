@@ -9,9 +9,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icons/*.png'],
       manifest: {
-        name: 'No More Sleeping In',
-        short_name: 'NoMoreZzz',
-        description: 'Place your phone on the bed — if you roll over, it wakes you up!',
+        name: 'もう寝坊しない',
+        short_name: 'もう寝坊しない',
+        description: 'スマホをベッドに置いて寝てください。寝返りを打ったら即アラームが鳴る二度寝防止アプリ。',
         theme_color: '#f59e0b',
         background_color: '#09090b',
         display: 'standalone',

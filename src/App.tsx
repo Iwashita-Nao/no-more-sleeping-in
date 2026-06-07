@@ -41,7 +41,7 @@ export default function App() {
     // Must happen inside a user gesture for iOS permission + AudioContext
     const granted = await requestMotionPermission()
     if (!granted) {
-      alert('Motion sensor permission is required. Please allow access and try again.')
+      alert('モーションセンサーへのアクセス権限が必要です。許可してから再度お試しください。')
       return
     }
 
